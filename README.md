@@ -12,7 +12,7 @@
 
 ## Скачиваем ymmbbot
 ```shell
-git clone https://github.com/syxme21/YMMBBot
+git clone https://github.com/nnqnn/YMMBBot
 # Вам надо быть в `ymmbbot` для дальнейшей работы
 cd ymmbbot
 ```
