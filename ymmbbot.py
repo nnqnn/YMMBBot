@@ -20,6 +20,7 @@ LASTFM_API_SECRET = config.LASTFM_API_SECRET
 LASTFM_USERNAME = config.LASTFM_USERNAME
 USERS = []
 CACHE = LimitedDict(limit=5)
+YOUR_URL = "https://t.me/kamilhateu"
 
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
@@ -120,18 +121,17 @@ async def send_message_every_minute() -> None:
         except NameError:
             await sleep(3)
             continue
-        inline_btn_1 = InlineKeyboardButton('В ЛС', url=YOUR_URL)
-        inline_btn_2 = InlineKeyboardButton(
+        inline_btn_1 = InlineKeyboardButton(
             'Остальные площадки', url=f'https://song.link/ya/{last_track.id}')
-        inline_btn_3 = InlineKeyboardButton(
+        inline_btn_2 = InlineKeyboardButton(
             'Песня в ЯМ', url=f'https://music.yandex.ru/track/{last_track.id}')
         inline_keyboard = InlineKeyboardMarkup(row_width=2).add(
-            inline_btn_1, inline_btn_2, inline_btn_3)
+            inline_btn_1, inline_btn_2)
         for user in USERS:
             chat_id = user['chat_username']
             message_id = user['message_id']
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            message_text_with_time = f"{message_text}\nВремя: {current_time}\n\nBOT CREATED BY MIPOHBOPOHIH"
+            message_text_with_time = f"{message_text}\nВремя (по Москве): {current_time}"
             await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=message_text_with_time,
                                         reply_markup=inline_keyboard)
         await sleep(10)
@@ -155,13 +155,12 @@ async def process_start_command(message: types.Message):
 
 @dp.inline_handler()
 async def handle_inline_query(inline_query: types.InlineQuery):
-    inline_btn_1 = InlineKeyboardButton('В ЛС', url=YOUR_URL)
-    inline_btn_2 = InlineKeyboardButton(
+    inline_btn_1 = InlineKeyboardButton(
         'Остальные площадки', url=f'https://song.link/ya/{last_track.id}')
-    inline_btn_3 = InlineKeyboardButton(
+    inline_btn_2 = InlineKeyboardButton(
         'Песня в ЯМ', url=f'https://music.yandex.ru/track/{last_track.id}')
     inline_keyboard = InlineKeyboardMarkup(row_width=1).add(
-        inline_btn_1, inline_btn_2, inline_btn_3)
+        inline_btn_1, inline_btn_2)
     audio = await get_downloadlink(last_track)
     artist = await get_artists(last_track)
     title = last_track.title
@@ -189,7 +188,7 @@ async def on_startup(dp: Dispatcher) -> None:
     await client.init()
     me = await bot.get_me()
     YOUR_URL = f"https://t.me/{me.username}?start"
-    message = await bot.send_message(chat_id=YOUR_CHANNEL, text='BOT CREATED BY MIPOHBOPOHIH')
+    message = await bot.send_message(chat_id=YOUR_CHANNEL, text='B')
     USERS.append({'chat_username': YOUR_CHANNEL,
                   'message_id': message.message_id})
 
