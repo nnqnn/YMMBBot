@@ -25,6 +25,7 @@ YOUR_URL = "https://t.me/kamilhateu"
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
+volna = False
 
 client = Client(YANDEX_MUSIC_TOKEN)
 try:
@@ -46,7 +47,8 @@ async def get_track_bytes() -> bytes:
 async def get_music():
     global last_track
     while True:
-        if last_fm_connected:
+        volna = False
+        if False:
             try:
                 queues = await client.queues_list()
                 last_queue = await client.queue(queues[0].id)
@@ -68,21 +70,26 @@ async def get_music():
                     searching_track = await client.search(f'{artist} {title}')
                     last_track = searching_track['best']['result']
         else:
-            queues = await client.queues_list()
-            last_queue = await client.queue(queues[0].id)
-            last_track_id = last_queue.get_current_track()
-            last_track = await last_track_id.fetch_track_async()
-        await sleep(10)
+            try:
+                queues = await client.queues_list()
+                last_queue = await client.queue(queues[0].id)
+                last_track_id = last_queue.get_current_track()
+                last_track = await last_track_id.fetch_track_async()
+            except Exception:
+                volna = True
+            await sleep(10)
 
 
 async def get_channel_message() -> str:
-    try:
-        artists = ', '.join(last_track.artists_name())
-    except NameError:
-        return ""
-    title = last_track.title
-    message = f"Слушает сейчас: {artists} - {title}."
-
+    if not volna:
+        try:
+            artists = ', '.join(last_track.artists_name())
+        except NameError:
+            return ""
+        title = last_track.title
+        message = f"Слушает сейчас: {artists} - {title}."
+    else:
+        message = "Слушает сейчас: Моя Волна"
     return message
 
 
