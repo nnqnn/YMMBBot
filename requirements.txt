@@ -1,4 +1,3 @@
 aiogram==2.25.2
 yandex-music
 asyncio
-pylast

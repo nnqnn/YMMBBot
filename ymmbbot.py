@@ -2,7 +2,6 @@ import datetime
 from asyncio import get_event_loop, sleep
 from io import BytesIO
 from warnings import filterwarnings
-import pylast
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,9 +14,6 @@ from limited import LimitedDict
 BOT_TOKEN = config.BOT_TOKEN
 YANDEX_MUSIC_TOKEN = config.YANDEX_MUSIC_TOKEN
 YOUR_CHANNEL = config.YOUR_CHANNEL
-LASTFM_API_KEY = config.LASTFM_API_KEY
-LASTFM_API_SECRET = config.LASTFM_API_SECRET
-LASTFM_USERNAME = config.LASTFM_USERNAME
 USERS = []
 CACHE = LimitedDict(limit=5)
 YOUR_URL = "https://t.me/kamilhateu"
@@ -25,16 +21,7 @@ YOUR_URL = "https://t.me/kamilhateu"
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-volna = False
-
 client = Client(YANDEX_MUSIC_TOKEN)
-try:
-    network = pylast.LastFMNetwork(
-        api_key=LASTFM_API_KEY, api_secret=LASTFM_API_SECRET)
-    last_fm_connected = True
-except Exception:
-    last_fm_connected = False
-
 filterwarnings("ignore", category=DeprecationWarning)
 
 
@@ -47,49 +34,26 @@ async def get_track_bytes() -> bytes:
 async def get_music():
     global last_track
     while True:
-        volna = False
-        if False:
+        if True:
             try:
                 queues = await client.queues_list()
                 last_queue = await client.queue(queues[0].id)
                 last_track_id = last_queue.get_current_track()
                 last_track = await last_track_id.fetch_track_async()
             except Exception:
-                user = network.get_user(LASTFM_USERNAME)
-                now_playing = user.get_now_playing()
-                try:
-                    artist = now_playing.get_artist().get_name()
-                    title = now_playing.get_title()
-                    searching_track = await client.search(f'{artist} {title}')
-                    last_track = searching_track['best']['result']
-                except Exception:
-                    recent_tracks = user.get_recent_tracks(limit=1)
-                    track = recent_tracks[0].track
-                    artist = track.artist.name
-                    title = track.title
-                    searching_track = await client.search(f'{artist} {title}')
-                    last_track = searching_track['best']['result']
-        else:
-            try:
-                queues = await client.queues_list()
-                last_queue = await client.queue(queues[0].id)
-                last_track_id = last_queue.get_current_track()
-                last_track = await last_track_id.fetch_track_async()
-            except Exception:
-                volna = True
+                print(Exception)
             await sleep(10)
 
 
 async def get_channel_message() -> str:
-    if not volna:
-        try:
-            artists = ', '.join(last_track.artists_name())
-        except NameError:
-            return ""
-        title = last_track.title
-        message = f"Слушает сейчас: {artists} - {title}."
-    else:
+    try:
+        artists = ', '.join(last_track.artists_name())
+    except Exception:
+        title = "Моя Волна"
         message = "Слушает сейчас: Моя Волна"
+        return message
+    title = last_track.title
+    message = f"Слушает сейчас: {artists} - {title}."
     return message
 
 
@@ -123,24 +87,37 @@ async def get_trackid(last_track) -> str:
 async def send_message_every_minute() -> None:
     while True:
         message_text = await get_channel_message()
-        try:
-            last_track_id = await get_trackid(last_track)
-        except NameError:
-            await sleep(3)
-            continue
-        inline_btn_1 = InlineKeyboardButton(
-            'Остальные площадки', url=f'https://song.link/ya/{last_track.id}')
-        inline_btn_2 = InlineKeyboardButton(
-            'Песня в ЯМ', url=f'https://music.yandex.ru/track/{last_track.id}')
-        inline_keyboard = InlineKeyboardMarkup(row_width=2).add(
-            inline_btn_1, inline_btn_2)
+        if not "Моя Волна" in message_text:
+            try:
+                last_track_id = await get_trackid(last_track)
+            except NameError:
+                await sleep(3)
+                continue
+            inline_btn_1 = InlineKeyboardButton(
+                'Остальные площадки', url=f'https://song.link/ya/{last_track.id}')
+            inline_btn_2 = InlineKeyboardButton(
+                'Песня в ЯМ', url=f'https://music.yandex.ru/track/{last_track.id}')
+            inline_keyboard = InlineKeyboardMarkup(row_width=2).add(
+                inline_btn_1, inline_btn_2)
+        else:
+            inline_btn_1 = InlineKeyboardButton(
+                'Остальные площадки', url=f'https://song.link/')
+            inline_btn_2 = InlineKeyboardButton(
+                'Песня в ЯМ', url=f'https://music.yandex.ru/')
+            inline_keyboard = InlineKeyboardMarkup(row_width=2).add(
+                inline_btn_1, inline_btn_2)
         for user in USERS:
             chat_id = user['chat_username']
             message_id = user['message_id']
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             message_text_with_time = f"{message_text}\nВремя (по Москве): {current_time}"
-            await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=message_text_with_time,
-                                        reply_markup=inline_keyboard)
+            if "Моя Волна" in message_text:
+                markup = types.ReplyKeyboardRemove()
+                await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=message_text_with_time,
+                                            reply_markup=inline_keyboard)
+            else:
+                await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=message_text_with_time,
+                                            reply_markup=inline_keyboard)
         await sleep(10)
 
 
@@ -195,7 +172,7 @@ async def on_startup(dp: Dispatcher) -> None:
     await client.init()
     me = await bot.get_me()
     YOUR_URL = f"https://t.me/{me.username}?start"
-    message = await bot.send_message(chat_id=YOUR_CHANNEL, text='B')
+    message = await bot.send_message(chat_id=YOUR_CHANNEL, text='Бот запущен')
     USERS.append({'chat_username': YOUR_CHANNEL,
                   'message_id': message.message_id})
 
